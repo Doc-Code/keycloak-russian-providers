@@ -4,8 +4,9 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
-import org.keycloak.broker.provider.IdentityProvider;
-import org.keycloak.broker.provider.util.SimpleHttp;
+import org.keycloak.broker.provider.UserAuthenticationIdentityProvider;
+import org.keycloak.http.simple.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.models.KeycloakContext;
@@ -58,7 +59,7 @@ public class VKIDEndpoint extends AbstractRussianEndpoint {
      * @param aSession  Сессия.
      */
     public VKIDEndpoint(
-        final IdentityProvider.AuthenticationCallback aCallback,
+        final UserAuthenticationIdentityProvider.AuthenticationCallback aCallback,
         final EventBuilder aEvent,
         final VKIDIdentityProvider aProvider,
         final KeycloakSession aSession
@@ -85,14 +86,15 @@ public class VKIDEndpoint extends AbstractRussianEndpoint {
     }
 
     @Override
-    public SimpleHttp generateTokenRequest(final String authorizationCode) {
+    public SimpleHttpRequest generateTokenRequest(final String authorizationCode) {
         String deviceID = request.getUri().getQueryParameters().getFirst("device_id");
         String state = request.getUri().getQueryParameters().getFirst("state");
         String oldState = InfinispanUtils.get(state);
         String codeVerifier = InfinispanUtils.get(oldState);
 
         return SimpleHttp
-            .doPost(provider.getConfig().getTokenUrl(), session)
+            .create(session)
+            .doPost(provider.getConfig().getTokenUrl())
             .param(OAUTH2_PARAMETER_CODE, authorizationCode)
             .param(
                 OAUTH2_PARAMETER_REDIRECT_URI,

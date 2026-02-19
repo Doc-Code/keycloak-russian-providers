@@ -11,9 +11,11 @@ import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.oidc.OAuth2IdentityProviderConfig;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.broker.provider.IdentityProvider;
+import org.keycloak.broker.provider.UserAuthenticationIdentityProvider;
 import org.keycloak.broker.provider.util.IdentityBrokerState;
-import org.keycloak.broker.provider.util.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttpRequest;
+import org.keycloak.http.simple.SimpleHttpResponse;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
@@ -58,7 +60,7 @@ public class AbstractRussianEndpoint {
     /**
      * Callback.
      */
-    private final IdentityProvider.AuthenticationCallback callback;
+    private final UserAuthenticationIdentityProvider.AuthenticationCallback callback;
 
     /**
      * Сервис отправки событий.
@@ -84,7 +86,7 @@ public class AbstractRussianEndpoint {
      * @param aSession  Сессия.
      */
     public AbstractRussianEndpoint(
-        final IdentityProvider.AuthenticationCallback aCallback,
+        final UserAuthenticationIdentityProvider.AuthenticationCallback aCallback,
         final EventBuilder aEvent,
         final AbstractOAuth2IdentityProvider aProvider,
         final KeycloakSession aSession
@@ -129,13 +131,13 @@ public class AbstractRussianEndpoint {
                     return callback.cancelled(providerConfig);
                 } else if (error.equals(OAuthErrorException.LOGIN_REQUIRED) || error.equals(
                     OAuthErrorException.INTERACTION_REQUIRED)) {
-                    return callback.error(error);
+                    return callback.error(providerConfig, error);
                 } else if (error.equals(
                     OAuthErrorException.TEMPORARILY_UNAVAILABLE) && Constants.AUTHENTICATION_EXPIRED_MESSAGE.equals(
                     errorDescription)) {
                     return callback.retryLogin(this.provider, authSession);
                 } else {
-                    return callback.error(Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
+                    return callback.error(providerConfig, Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
                 }
             }
 
@@ -147,9 +149,9 @@ public class AbstractRussianEndpoint {
                 return errorIdentityProviderLogin(Messages.IDENTITY_PROVIDER_MISSING_CODE_OR_ERROR_ERROR);
             }
 
-            SimpleHttp simpleHttp = generateTokenRequest(authorizationCode);
+            SimpleHttpRequest simpleHttp = generateTokenRequest(authorizationCode);
             String response;
-            try (SimpleHttp.Response simpleResponse = simpleHttp.asResponse()) {
+            try (SimpleHttpResponse simpleResponse = simpleHttp.asResponse()) {
                 int status = simpleResponse.getStatus();
                 boolean success = status >= 200 && status < 400;
                 response = simpleResponse.asString();
@@ -227,11 +229,12 @@ public class AbstractRussianEndpoint {
      * @param authorizationCode Код.
      * @return HTTP запрос.
      */
-    public SimpleHttp generateTokenRequest(final String authorizationCode) {
+    public SimpleHttpRequest generateTokenRequest(final String authorizationCode) {
         KeycloakContext context = session.getContext();
         OAuth2IdentityProviderConfig providerConfig = provider.getConfig();
-        SimpleHttp tokenRequest = SimpleHttp
-            .doPost(providerConfig.getTokenUrl(), session)
+        SimpleHttpRequest tokenRequest = SimpleHttp
+            .create(session)
+            .doPost(providerConfig.getTokenUrl())
             .param(OAUTH2_PARAMETER_CODE, authorizationCode)
             .param(
                 OAUTH2_PARAMETER_REDIRECT_URI,

@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.keycloak.broker.oidc.mappers.AbstractJsonUserAttributeMapper;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.broker.provider.util.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.broker.social.SocialIdentityProvider;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.KeycloakSession;
@@ -77,11 +78,11 @@ public class MailRuIdentityProvider
     }
 
     @Override
-    protected SimpleHttp buildUserInfoRequest(final String subjectToken, final String userInfoUrl) {
+    protected SimpleHttpRequest buildUserInfoRequest(final String subjectToken, final String userInfoUrl) {
         logger.info("subjectToken: " + subjectToken);
         logger.info("userInfoUrl: " + userInfoUrl);
 
-        return SimpleHttp.doGet(PROFILE_URL + "?access_token=" + subjectToken, session);
+        return SimpleHttp.create(session).doGet(PROFILE_URL + "?access_token=" + subjectToken);
     }
 
     @Override
@@ -115,7 +116,7 @@ public class MailRuIdentityProvider
         try {
             return extractIdentityFromProfile(
                 null,
-                SimpleHttp.doGet(PROFILE_URL + "?access_token=" + accessToken, session).asJson()
+                SimpleHttp.create(session).doGet(PROFILE_URL + "?access_token=" + accessToken).asJson()
             );
         } catch (IOException e) {
             throw new IdentityBrokerException("Could not obtain user profile from MailRu: " + e.getMessage(), e);

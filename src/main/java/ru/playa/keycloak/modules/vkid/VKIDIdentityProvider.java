@@ -6,7 +6,7 @@ import org.keycloak.broker.oidc.mappers.AbstractJsonUserAttributeMapper;
 import org.keycloak.broker.provider.AuthenticationRequest;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.broker.provider.util.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttp;
 import org.keycloak.broker.social.SocialIdentityProvider;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.KeycloakSession;
@@ -96,7 +96,8 @@ public class VKIDIdentityProvider
             return extractIdentityFromProfile(
                 null,
                 SimpleHttp
-                    .doPost(getConfig().getUserInfoUrl(), session)
+                    .create(session)
+                    .doPost(getConfig().getUserInfoUrl())
                     .param("access_token", accessToken)
                     .param("client_id", getConfig().getClientId())
                     .asJson()
